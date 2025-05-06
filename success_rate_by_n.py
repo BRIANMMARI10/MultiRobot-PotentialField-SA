@@ -1,7 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
-df = pd.read_csv("simulation_results_initorient.csv")
+df = pd.read_csv("simulation_results_sa_peturb.csv")
 df['N'] = df['Simulation'].str.extract(r'N=(\d+)').astype(int)
 
 success_rates = df.groupby('N')['Goal Reached'].mean().reset_index()

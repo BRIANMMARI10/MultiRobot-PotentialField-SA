@@ -142,4 +142,74 @@ class ComSurfacePotentialField(ComSurfaceBase):
         """Draws the object."""
         super().draw()
         
+    def compute_path_length(self, step_size=5.0, max_steps=1000):
+        """
+        Simulates gradient descent from the robot's current position to the goal
+        on the potential field. Returns the total path length.
+        """
+        if self.mData is None or self.mBindingRobot is None:
+            return float("inf")
+
+        pos = np.array(self.mBindingRobot.mPos[:2])
+        path_length = 0.0
+
+        for _ in range(max_steps):
+            ix = int((pos[0] - np.min(self.mX)) / ((np.max(self.mX) - np.min(self.mX)) / len(self.mX)))
+            iy = int((pos[1] - np.min(self.mY)) / ((np.max(self.mY) - np.min(self.mY)) / len(self.mY)))
+
+            # Boundary check
+            if ix < 1 or ix >= self.mData.shape[0] - 1 or iy < 1 or iy >= self.mData.shape[1] - 1:
+                return float("inf")
+
+            # Estimate gradient
+            grad_x = (self.mData[ix+1, iy] - self.mData[ix-1, iy]) / 2.0
+            grad_y = (self.mData[ix, iy+1] - self.mData[ix, iy-1]) / 2.0
+            grad = np.array([grad_x, grad_y])
+
+            if np.linalg.norm(grad) < 1e-3:  # Close to flat or local minimum
+                break
+
+            # Move along the negative gradient
+            direction = -grad / np.linalg.norm(grad)
+            next_pos = pos + step_size * direction
+            path_length += np.linalg.norm(next_pos - pos)
+            pos = next_pos
+
+            # Check if near goal
+            if np.linalg.norm(pos - np.array(self.mTarget[:2])) < step_size:
+                path_length += np.linalg.norm(pos - np.array(self.mTarget[:2]))
+                break
+
+        return path_length
+
+    def calibrate_for_shortest_path(self, initial_weight=0.1, iterations=100, initial_temp=40.0, cooling_rate=0.98):
+        self.repulsion_weight = initial_weight
+        best_weight = initial_weight
+        best_score = self.evaluate_field_quality()
+
+        current_temp = initial_temp
+
+        for _ in range(iterations):
+            candidate_weight = self.repulsion_weight + np.random.uniform(-0.1, 0.1)
+            candidate_weight = max(0.01, min(candidate_weight, 3.0))
+
+            self.repulsion_weight = candidate_weight
+            self.update()
+
+            score = self.evaluate_field_quality()
+
+            delta = score - best_score
+            if delta < 0 or np.exp(-delta / current_temp) > np.random.rand():
+                best_score = score
+                best_weight = candidate_weight
+
+            current_temp *= cooling_rate
+
+        self.repulsion_weight = best_weight
+        self.update()
+        print(f"Optimal repulsion weight for shortest path: {best_weight}")
+    
+    def evaluate_field_quality(self):
+        return self.compute_path_length()  # Shorter path is better
+
 

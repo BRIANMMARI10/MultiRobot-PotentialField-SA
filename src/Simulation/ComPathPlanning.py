@@ -213,9 +213,9 @@ def calc_potential_field(gx, gy, ox, oy, rr, reso=1, map_size=(-1000, -1000, 100
     return pmap, minx, miny
 
 
-
-
-def calc_potential_field2(gx, gy, ox, oy, rr, reso=1, map_size=(-1000, -1000, 1000, 1000)):
+# Brian
+def calc_potential_field2(gx, gy, ox, oy, rr, reso, map_size=(-1000, -1000, 1000, 1000), repulsion_weight=1.0):
+# Brian
     """
     Calculate the potential field for a given goal and obstacle positions
 
@@ -266,14 +266,16 @@ def calc_potential_field2(gx, gy, ox, oy, rr, reso=1, map_size=(-1000, -1000, 10
         ug = calc_attractive_potential(x_mat, y_mat, gx, gy)
 
         # Calculate repulsive potential
-        uo = calc_repulsive_potential2(x_mat, y_mat, ox, oy, rr)
+        # Brian
+        uo = repulsion_weight * calc_repulsive_potential2(x_mat, y_mat, ox, oy, rr)
+        # Brian
 
         # Combine attractive and repulsive potentials
         uf = ug + uo
     else:
         # If no goal is specified, only calculate repulsive potential
-        uo = calc_repulsive_potential2(x_mat, y_mat, ox, oy, rr)
-        uf = uo
+        uo = repulsion_weight * calc_repulsive_potential2(x_mat, y_mat, ox, oy, rr)
+        uf = repulsion_weight * uo
 
     # Convert the calculated 2D numpy array to a list of lists representing the potential field
     pmap = uf.T.tolist()
@@ -686,4 +688,3 @@ class ComPathPlanning:
         # If there are no more points in the path and no more destinations to randomize, return the target coordinates
         else:
             return self.mTarget[0], self.mTarget[1], None
-

@@ -763,10 +763,11 @@ class ComStage:
                 break
             self.count += 1
             ComObject.update_count = self.count
-            if self.count % 1 == 0:
-                print("Round: 【%d : %d】" % (self.count, self.mRuningTime/settings.CS_INTERVAL))
+            # if self.count % 1 == 0:
+            #     # print("Round: 【%d : %d】" % (self.count, self.mRuningTime/settings.CS_INTERVAL))
             self.update()
-            plt.pause(settings.CS_INTERVAL)
+            if self.isPlotGraph:
+                plt.pause(settings.CS_INTERVAL)
 
 
     def run_once(self):

@@ -127,3 +127,20 @@ def getObjectByType(type_name: str):
         List[object]: A list of objects in 'object_collection' that have type 'type_name'.
     """
     return [obj for obj in object_collection if obj.mObjectType == type_name]
+
+# Brian
+def clearObjectByType(type_name: str):
+    """
+    Removes all objects of a given type from the global 'object_collection' list.
+
+    Args:
+        type_name (str): The type of object to remove (e.g., 'ComRobot', 'ComFish').
+    """
+    global object_collection
+    object_collection = [obj for obj in object_collection if obj.mObjectType != type_name]
+
+def clearAll():
+    global object_collection, obstacle_kdtree
+    object_collection.clear()
+    obstacle_kdtree = None
+# Brian

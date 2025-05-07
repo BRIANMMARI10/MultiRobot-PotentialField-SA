@@ -1,5 +1,6 @@
 from Simulation.ComRobot import ComRobot 
 from Simulation.ComObject import ComObject 
+from Simulation.ComObjectCollection import getNearestObstacle  # Make sure this is imported
 import copy
 import math
 isCupy = False
@@ -17,7 +18,7 @@ from Common import utils
 from Simulation.ComPathPlanning import ComPathPlanning
 from Simulation.ComPathPlanning3D import ComPathPlanning3D
 import Simulation.ComObjectCollection as ComCol
-
+collision_threshold = 55 
 
 
 class PathFinderController:
@@ -90,6 +91,8 @@ class PathFinderController:
 class ComRobotCon(ComRobot):
     def __init__(self, pos):
         super(ComRobotCon, self).__init__(pos)
+        self.mPathPlanningControl = None  # <- leave this as None
+        self.mPathPlanningControl3D = None  # <- same for 3D
         self.mTargetLineLen = 300.0       # 目标线的长度
         self.mObjectType = "ComRobot"       # 用于标识当前物体类别
         self.isPlotOrientationLine = True
@@ -115,6 +118,9 @@ class ComRobotCon(ComRobot):
         self.mPathPlanningControl = ComPathPlanning()
         self.mPathPlanningControl3D = ComPathPlanning3D()
         # self.mOrientationLineColor = 'blue'
+        self.robot_path_log = []  # Brian: stores the real path during simulation
+        self.goal_reached_time = None # Brian: time when robot reaches goal
+        self.already_colliding = False # Brian: not yet collided
     
     def getPlanningControl(self):
         if self.mRobotType == '2D':
@@ -122,16 +128,35 @@ class ComRobotCon(ComRobot):
         elif self.mRobotType == '3D':
             return self.mPathPlanningControl3D
 
+    # Brian
     def setPlanningTarget(self, pos):
-        self.getPlanningControl().setTarget(pos)
+        if pos is not None and isinstance(pos, (list, tuple, np.ndarray)):
+            self.getPlanningControl().setTarget(pos)
+        else:
+            # Fallback target
+            self.getPlanningControl().setTarget(np.array([-800, 800, 0]))
+    # Brian
 
     def move(self):
         """
         向目标移动一步
         :return:
         """
+        print(f"[Move] Robot {self.mId}: Iteration = {self.mIterations}")
         self.mIterations += 1
         pos_last = self.mPos.copy()
+
+        # Brian: record position BEFORE moving
+        self.robot_path_log.append(self.getPos2d().copy())
+        # Brian
+
+        # Brian: check if robot has reached goal (only once)
+        if self.goal_reached_time is None:
+            goal = np.array([-800, 800])
+            distance_to_goal = self.distance(self.getPos2d(), goal)
+            if distance_to_goal <= 20:  # Same as goal_threshold
+                self.goal_reached_time = self.mIterations * mySettings.TIME_INTERVAL
+
         robot_pos = self.pos
         target_pos = self.target
 
@@ -144,6 +169,26 @@ class ComRobotCon(ComRobot):
             pos_next = np.matmul(pos_next, rot_mat)
             pos_next += pos_last[0:2]
             self.pos = pos_next
+
+            # Brian: Collision check
+            nearest_obstacle = getNearestObstacle(self.getPos2d())
+            if nearest_obstacle is not None:
+                nearest_obstacle = np.squeeze(nearest_obstacle)[:2]
+                dist_to_nearest = self.distance(self.getPos2d(), nearest_obstacle)
+                collision_now = dist_to_nearest <= collision_threshold
+            
+                if collision_now and not hasattr(self, 'already_colliding'):
+                    self.already_colliding = False
+                if collision_now and not self.already_colliding:
+                    if not hasattr(self, 'collisions'):
+                        self.collisions = 0
+
+                    if collision_now and not self.already_colliding:
+                        self.collisions += 1
+                        self.already_colliding = True
+                    elif not collision_now:
+                        self.already_colliding = False
+            # Brian end
         elif self.mRobotType == '3D':
             direction_next = self.mRotationSpeed * mySettings.TIME_INTERVAL + self.mDirection
             self.setDirection(direction_next)
@@ -198,6 +243,7 @@ class ComRobotCon(ComRobot):
                 # 平移
                 target = np.array([self.mPos[0]+target[0], self.mPos[1]+target[1]])
                 # print(target)
+                print(f"[Planning] Robot {self.mId}: New Target = {self.mTarget}")
                 x = np.array([self.mPos[0], target[0]])
                 y = np.array([self.mPos[1], target[1]])
                 z = np.array([self.mPos[2], self.mPos[2]])
@@ -225,6 +271,7 @@ class ComRobotCon(ComRobot):
         # if self.mId == 0:
         #     print(self.mLineSpeed, self.mRotationSpeed)
         self.move()
+        print(f"[Update] Robot {self.mId}: Pos = {self.mPos}, Target = {self.mTarget}, Speed = {self.mLineSpeed}, Rotation = {self.mRotationSpeed}")
 
     def setDirection(self, direction):
         if direction > 2 * math.pi:
@@ -308,6 +355,7 @@ class ComRobotCon(ComRobot):
             self.mLineSpeed = v
             self.mZLineSpeed = z_v
             self.mRotationSpeed = w
+            print(f"[Control] Robot {self.mId}: v = {self.mLineSpeed}, w = {self.mRotationSpeed}")
             
 
 

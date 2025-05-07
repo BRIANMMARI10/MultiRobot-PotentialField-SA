@@ -37,7 +37,6 @@ results = {
 for N in N_values:
     for trial in range(num_trials):
         print(f"\n--- Running N={N}, Trial={trial} ---")
-        ComCol.clearAll()
 
         # Reset class-level state in ComRobot
         ComRobot._robot_count = 0
@@ -71,7 +70,7 @@ for N in N_values:
             robot.isShowSenseRange = False
             robot.isPlotOrientationLine = True
             robot.isPlotTrail = True
-            robot.setPlanningTarget((-800, 800, 0))
+            robot.mPathPlanningControl.setTarget((-800, 800, 0))
 
             base_theta = random.uniform(0, 2 * math.pi)
             # Apply perturbation: ±10 degrees in radians
@@ -113,15 +112,12 @@ for N in N_values:
         temp_field.setPopulation([])  # Explicitly set an empty list here
         temp_field.update()
 
-        # Calibrate repulsion weight using simulated annealing
-        temp_field.calibrate_repulsion_weight()
+        # Calibrate shortest path using simulated annealing
+        temp_field.calibrate_for_shortest_path()
 
-        # Use the tuned repulsion weight in the main potential field
-        optimal_repulsion_weight = temp_field.repulsion_weight
 
         # Now set up main potential field (with robots)
         potential_field = ComSurfacePotentialField()
-        potential_field.setRepulsionWeight(optimal_repulsion_weight)
         potential_field.setZDir('2D')
         potential_field.setX(np.arange(-1000, 1000, 10))
         potential_field.setY(np.arange(-1000, 1000, 10))

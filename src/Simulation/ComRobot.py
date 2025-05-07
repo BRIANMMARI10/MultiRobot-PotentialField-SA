@@ -2,6 +2,8 @@
 
 import enum
 from networkx.algorithms.assortativity import neighbor_degree
+import matplotlib as plt
+from matplotlib.patches import Circle
 isCupy = False
 try:
     import cupy as np
@@ -264,7 +266,13 @@ class ComRobot(ComObject):
 
             # Draw the communication range either as a surface or wireframe, depending on communication range type.
             if self.mCommunicationRangeType == 0:
-                ax.plot_surface(x, y, z, color=self.mCommunicationRangeColor, alpha=self.mCommunicationRangeAlpha)
+                if hasattr(ax, 'plot_surface'):
+                    ax.plot_surface(x, y, z, color=self.mCommunicationRangeColor, alpha=self.mCommunicationRangeAlpha)
+                else:
+                    circle = Circle((self.mPos[0], self.mPos[1]), self.mCommunicationRange,
+                                    color=self.mCommunicationRangeColor, alpha=self.mCommunicationRangeAlpha, fill=False)
+
+                    ax.add_patch(circle)
             elif self.mCommunicationRangeType == 1:
                 ax.plot_wireframe(x, y, z, color=self.mCommunicationRangeColor, alpha=self.mCommunicationRangeAlpha, rstride=self.mWireframeRstride, cstride=self.mWireframeCstride)
 
